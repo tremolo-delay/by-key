@@ -146,6 +146,35 @@ TEST(ByKey, ExtremaByKeepsPerKeyMinMax) {
     EXPECT_EQ(minmax.at("alpha").max, 15);
 }
 
+TEST(ByKey, ExtremaByHandlesMoveBeforeOrder) {
+    struct Entry {
+        std::string key;
+        std::string payload;
+    };
+
+    std::vector<Entry> entries{
+        {"alpha", "zzz"},
+        {"alpha", "xx"},
+        {"alpha", "longer"},
+        {"beta", "solo"}
+    };
+
+    auto extrema = bykey::extrema_by(
+        entries,
+        [](const Entry& e){ return e.key; },
+        [](Entry& e){ return std::move(e.payload); },
+        [](const Entry& e){ return e.payload.size(); }
+    );
+
+    auto alpha = extrema.at("alpha");
+    EXPECT_EQ(alpha.min, "xx");
+    EXPECT_EQ(alpha.max, "longer");
+
+    auto beta = extrema.at("beta");
+    EXPECT_EQ(beta.min, "solo");
+    EXPECT_EQ(beta.max, "solo");
+}
+
 TEST(ByKey, TopAndBottomKHelpers) {
     std::unordered_map<int, int> freq{{1, 4}, {2, 2}, {3, 9}, {4, 1}};
 
@@ -217,6 +246,19 @@ TEST(ByKey, PipelineAdaptorsCompose) {
     EXPECT_EQ(partitioned.trues[0], 1);
     ASSERT_EQ(partitioned.falses.size(), 3u);
     EXPECT_EQ(partitioned.falses.back(), 13);
+}
+
+TEST(ByKey, PartitionByEvaluatesPredicateBeforeMove) {
+    std::vector<std::string> words{"on", "stop", "cab", "a", "longword"};
+
+    auto partitions = bykey::partition_by(
+        words,
+        [](const std::string& s){ return s.size() > 2; },
+        [](std::string& s){ return std::move(s); }
+    );
+
+    EXPECT_EQ(partitions.trues, (std::vector<std::string>{"stop", "cab", "longword"}));
+    EXPECT_EQ(partitions.falses, (std::vector<std::string>{"on", "a"}));
 }
 
 TEST(Examples, LC0049_GroupAnagrams) {

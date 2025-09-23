@@ -286,8 +286,8 @@ auto extrema_by(R&& r,
 
     for (auto&& x : r) {
         auto key_value = key_proj(x);
-        auto val_value = value_proj(x);
         auto order_value = order_proj(x);
+        auto val_value = value_proj(x);
         auto [it, inserted] = states.try_emplace(
             key_value,
             detail::extrema_state<V, O>{val_value, order_value, val_value, order_value}
@@ -374,8 +374,8 @@ auto partition_by(R&& r, Pred pred, ValProj value = {}) {
     auto value_proj = std::move(value);
 
     for (auto&& x : r) {
-        auto val_value = value_proj(x);
         bool is_true = static_cast<bool>(pred_proj(x));
+        auto val_value = value_proj(x);
         if (is_true) out.trues.push_back(std::move(val_value));
         else         out.falses.push_back(std::move(val_value));
     }

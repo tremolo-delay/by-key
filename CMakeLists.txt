@@ -1,6 +1,6 @@
 # CMakeLists.txt
 cmake_minimum_required(VERSION 3.20)
-project(bykey VERSION 1.0.0 LANGUAGES CXX)
+project(bykey VERSION 1.0.1 LANGUAGES CXX)
 add_library(bykey INTERFACE)
 target_include_directories(bykey INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(bykey INTERFACE cxx_std_20)
