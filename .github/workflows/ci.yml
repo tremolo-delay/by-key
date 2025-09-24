@@ -1,22 +1,141 @@
-# .github/workflows/ci.yml
 name: ci
 on: [push, pull_request]
+
 jobs:
-  build:
-    runs-on: macos-latest
+  # ---- Native runners: OS + STL coverage ----
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+            name: "GCC (Ubuntu)"
+          - os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+            name: "Clang (Ubuntu)"
+          - os: macos-latest
+            cc: clang
+            cxx: clang++
+            name: "AppleClang (macOS)"
+          - os: windows-latest
+            msvc: true
+            name: "MSVC (Windows)"
+    runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Configure
-      run: cmake -S . -B build -DCMAKE_CXX_STANDARD=23 -DBUILD_EXAMPLES=ON
-    - name: Build
-      run: cmake --build build -j
-    - name: Test
-      run: ./build/bykey_tests
-    - name: Run Examples
-      run: |
-        ./build/lc_0049_group_anagrams
-        ./build/lc_0347_top_k_frequent
-        ./build/lc_0697_degree_of_array
-        ./build/lc_0350_intersection_ii
-        ./build/lc_0242_valid_anagram
-        ./build/lc_1331_rank_transform
+      - uses: actions/checkout@v4
+
+      - if: runner.os == 'Linux'
+        name: Tooling (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake g++ clang
+
+      - if: runner.os == 'macOS'
+        name: Tooling (macOS)
+        run: |
+          brew update
+          brew install ninja cmake
+
+      - if: matrix.msvc
+        name: MSVC env
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure
+        shell: bash
+        run: |
+          CMAKE_GEN="Ninja"
+          if [ "${{ matrix.msvc }}" = "true" ]; then
+            cmake -S . -B build -G "$CMAKE_GEN" \
+                  -DCMAKE_CXX_STANDARD=23 -DBUILD_TESTING=ON -DBUILD_EXAMPLES=ON
+          else
+            cmake -S . -B build -G "$CMAKE_GEN" \
+                  -DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+                  -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic" \
+                  -DCMAKE_CXX_STANDARD=23 -DBUILD_TESTING=ON -DBUILD_EXAMPLES=ON
+          fi
+
+      - name: Build
+        run: cmake --build build -j
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  # ---- Pinned toolchains via containers: reproducible versions ----
+  toolchain:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: gcc:13
+            cc: gcc
+            cxx: g++
+            name: "GCC 13 (container)"
+          - image: gcc:14
+            cc: gcc
+            cxx: g++
+            name: "GCC 14 (container)"
+          - image: silkeh/clang:17
+            cc: clang
+            cxx: clang++
+            name: "Clang 17 (container)"
+          - image: silkeh/clang:18
+            cc: clang
+            cxx: clang++
+            name: "Clang 18 (container)"
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tooling
+        run: |
+          apt-get update
+          apt-get install -y cmake ninja-build
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+                -DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+                -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic" \
+                -DCMAKE_CXX_STANDARD=23 -DBUILD_TESTING=ON -DBUILD_EXAMPLES=ON
+      - name: Build
+        run: cmake --build build -j
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  # ---- libc++ sanity (Clang on Ubuntu, different STL) ----
+  libcxx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build libc++-dev libc++abi-dev
+      - name: Configure (Clang + libc++)
+        run: |
+          cmake -S . -B build -G Ninja \
+                -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+                -DCMAKE_CXX_FLAGS="-stdlib=libc++ -Wall -Wextra -Wpedantic" \
+                -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++" \
+                -DCMAKE_CXX_STANDARD=23 -DBUILD_TESTING=ON
+      - name: Build & Test
+        run: cmake --build build -j && ctest --test-dir build --output-on-failure
+
+  # ---- Sanitizers (UB/ASan) ----
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build
+      - name: Configure (ASan/UBSan)
+        run: |
+          cmake -S . -B build-asan -G Ninja \
+                -DCMAKE_CXX_COMPILER=clang++ \
+                -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Wpedantic" \
+                -DBUILD_TESTING=ON
+      - name: Build & Test
+        run: cmake --build build-asan -j && ctest --test-dir build-asan --output-on-failure
