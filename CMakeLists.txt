@@ -1,6 +1,7 @@
 # CMakeLists.txt
 cmake_minimum_required(VERSION 3.20)
 project(bykey VERSION 1.0.1 LANGUAGES CXX)
+include(GNUInstallDirs)
 add_library(bykey INTERFACE)
 target_include_directories(bykey INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(bykey INTERFACE cxx_std_20)
@@ -21,6 +22,30 @@ if (BUILD_EXAMPLES)
   add_example(lc_0242_valid_anagram)
   add_example(lc_1331_rank_transform)
 endif()
+
+install(
+  DIRECTORY include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(
+  FILES LICENSE README.md
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doc/${PROJECT_NAME}
+)
+
+set(CPACK_PACKAGE_NAME "bykey")
+set(CPACK_PACKAGE_VENDOR "tremolo-delay")
+set(CPACK_PACKAGE_CONTACT "https://github.com/tremolo-delay/by-key")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+    "Header-only C++ utilities for grouping, counting, and indexing ranges by key.")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_GENERATOR "TGZ;RPM")
+set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+set(CPACK_RPM_PACKAGE_GROUP "Development/Libraries")
+set(CPACK_RPM_PACKAGE_URL "https://github.com/tremolo-delay/by-key")
+set(CPACK_RPM_PACKAGE_ARCHITECTURE "noarch")
+
+include(CPack)
 
 
 include(CTest)              # provides BUILD_TESTING option (ON by default in CI below)
