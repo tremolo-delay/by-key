@@ -3,6 +3,9 @@ on:
   push:
     tags: ["v*"]
 
+permissions:
+  contents: write
+
 jobs:
   build-test-release:
     runs-on: ubuntu-latest
@@ -32,9 +35,39 @@ jobs:
           VERSION_TAG="${GITHUB_REF_NAME}"
           VERSION_CLEAN="${VERSION_TAG#v}"
           cp include/by-key/by_key.hpp single-header-by_key.hpp
-          TAR_PATH=$(find build -maxdepth 1 -name "bykey-${VERSION_CLEAN}*.tar.gz" | head -n1)
+          find_artifact() {
+            local pattern="$1"
+            mapfile -t matches < <(find build -maxdepth 1 -type f -name "$pattern" -print | sort)
+            if [ "${#matches[@]}" -eq 0 ]; then
+              echo "::error::No artifacts matching ${pattern} found under build/" >&2
+              exit 1
+            fi
+            printf '%s\n' "${matches[0]}"
+          }
+
+          extract_version() {
+            local filename="$1"
+            local base="${filename##*/}"
+            base="${base#bykey-}"
+            base="${base%.tar.gz}"
+            base="${base%.rpm}"
+            printf '%s\n' "${base%%-*}"
+          }
+
+          TAR_PATH=$(find_artifact "bykey-*.tar.gz")
+          TAR_VERSION=$(extract_version "${TAR_PATH}")
+          if [ "${TAR_VERSION}" != "${VERSION_CLEAN}" ]; then
+            echo "::error::Package version ${TAR_VERSION} (from ${TAR_PATH}) does not match tag version ${VERSION_CLEAN}" >&2
+            exit 1
+          fi
           cp "${TAR_PATH}" "bykey-${VERSION_TAG}.tar.gz"
-          RPM_PATH=$(find build -maxdepth 1 -name "bykey-${VERSION_CLEAN}*.rpm" | head -n1)
+
+          RPM_PATH=$(find_artifact "bykey-*.rpm")
+          RPM_VERSION=$(extract_version "${RPM_PATH}")
+          if [ "${RPM_VERSION}" != "${VERSION_CLEAN}" ]; then
+            echo "::error::RPM version ${RPM_VERSION} (from ${RPM_PATH}) does not match tag version ${VERSION_CLEAN}" >&2
+            exit 1
+          fi
           RPM_RENAMED="bykey-${VERSION_CLEAN}.rpm"
           cp "${RPM_PATH}" "${RPM_RENAMED}"
           echo "RPM_UPLOAD=${RPM_RENAMED}" >> "${GITHUB_ENV}"
