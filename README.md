@@ -100,12 +100,12 @@ auto partitions       = numbers | bykey::adaptors::partition([](int x){ return x
 
 ## Example Problems
 
-- 49. Group Anagrams (`examples/lc_0049_group_anagrams.cpp`): group words by sorted-letter signatures; output order is immaterial and buckets reuse `group_by`.
-- 347. Top K Frequent Elements (`examples/lc_0347_top_k_frequent.cpp`): count integers and slice the most frequent keys with `top_k_by_value`.
-- 697. Degree of an Array (`examples/lc_0697_degree_of_array.cpp`): track per-value first/last indices via `minmax_by`, then search for the shortest subarray that matches the global degree.
-- 350. Intersection of Two Arrays II (`examples/lc_0350_intersection_ii.cpp`): build frequency maps with `count_by` and decrement while scanning the second list to emit the multiset intersection.
-- 242. Valid Anagram (`examples/lc_0242_valid_anagram.cpp`): compare two `count_by` maps to decide whether strings are anagrams.
-- 1331. Rank Transform of an Array (`examples/lc_1331_rank_transform.cpp`): project unique sorted values into 1-based ranks with `index_by`, then map the input through the resulting lookup.
+- **LC 49 – Group Anagrams** (`examples/lc_0049_group_anagrams.cpp`): group words by sorted-letter signatures; output order is immaterial and buckets reuse `group_by`.
+- **LC 347 – Top K Frequent Elements** (`examples/lc_0347_top_k_frequent.cpp`): count integers and slice the most frequent keys with `top_k_by_value`.
+- **LC 697 – Degree of an Array** (`examples/lc_0697_degree_of_array.cpp`): track per-value first/last indices via `minmax_by`, then search for the shortest subarray that matches the global degree.
+- **LC 350 – Intersection of Two Arrays II** (`examples/lc_0350_intersection_ii.cpp`): build frequency maps with `count_by` and decrement while scanning the second list to emit the multiset intersection.
+- **LC 242 – Valid Anagram** (`examples/lc_0242_valid_anagram.cpp`): compare two `count_by` maps to decide whether strings are anagrams.
+- **LC 1331 – Rank Transform of an Array** (`examples/lc_1331_rank_transform.cpp`): project unique sorted values into 1-based ranks with `index_by`, then map the input through the resulting lookup.
 
 These workflows double as unit tests (`tests/test_by_key.cpp`) so CI validates each recipe alongside the standalone example binaries.
 
